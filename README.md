@@ -1,22 +1,154 @@
-**#KERNEL ENERGY MONTIOR**
-A proof of concept Linux kernel module, desined to measure and accumulate the energy consumption (in joules) , of specific user space processes by hooking into the 
-CPU's Intel RAPL(Running average power limit) interface.
+Kernel Energy Monitor (KEM)
 
-This tool is the foundation for calculating the "Intelligence per watt" metric(IPW), for ai/ml workloads.
+Vision:
+
+An intelligent runtime that decides whether an AI task should execute locally or on a cloud LLM by estimating energy consumption, latency, cost, privacy, and available hardware resources.
+
+HIGH LEVEL ARCHITECTURE:
+
+                  ┌────────────────────────────┐
+                  │        User Request        │
+                  │  "Debug this code"         │
+                  └─────────────┬──────────────┘
+                                │
+                                ▼
+                  ┌────────────────────────────┐
+                  │    AI Request Profiler     │
+                  │                            │
+                  │ • Prompt length            │
+                  │ • Code size                │
+                  │ • Task type                │
+                  │ • Context size             │
+                  └─────────────┬──────────────┘
+                                │
+               ┌────────────────┴─────────────────┐
+               ▼                                  ▼
+      Resource Monitor                    Task Analyzer
+      CPU Usage                           Complexity Estimator
+      GPU Usage                           Token Estimator
+      Memory                              Expected Runtime
+      Battery                             Privacy Classification
+      Temperature
+
+               └────────────────┬─────────────────┘
+                                ▼
+                  Decision Engine
+         (Energy + Cost + Latency Model)
+
+         ┌──────────────┬──────────────┬──────────────┐
+         │              │              │
+         ▼              ▼              ▼
+    Local LLM      Cloud LLM     Hybrid Mode
+  (Ollama etc.)   (GPT/Claude)   Split Workflow
+
+         │              │              │
+         └──────────────┴──────────────┘
+                        ▼
+             Execution & Telemetry
+                        │
+                        ▼
+              Learning/Feedback Engine
 
 
-**Project Status**
-1. Currently in its phase1, measures the global energy consumption.
-2. Next phase is Process Tracking via the sched_switch hook.
+
+Main Components
+1. AI Request Profiler
+Understands the workload.
+Example:
+Task:
+Debug React application
+Estimated Tokens:
+12,000
+Language:
+TypeScript
+Complexity:
+Medium
+Privacy:
+High
 
 
-**Pre-requisites**
-1. Ubuntu/Debian based destribution (for kernel module development)
-2. build essentials: GCC compiles , Make
-3. linux-headers-$(uname-r):kernel headers matching the running kernel
-4. msr-tools (for checking hardware compatibility): use command- "sudo modprobe msr" followed by "sudo rdmsr 0x611-d" in your terminal,if the output is a large number, the hardware is compatible.
-5. Intel CPU with RAPL.
 
 
-**Usage and Testing (phase1)**
-1. clone the repository : "git clone
+2. Resource Monitor
+Collects live system metrics.
+Linux APIs:
+/proc/stat
+/proc/meminfo
+powercap
+Intel RAPL
+nvidia-smi
+sysfs
+battery information
+
+
+Metrics:
+CPU utilization
+GPU utilization
+RAM
+SSD activity
+Battery %
+CPU temperature
+Current power draw
+
+
+3. Complexity Estimator
+Instead of simply counting tokens, estimate:
+Complexity Score=Prompt Size+Context Size+Reasoning Depth+Expected Output Size
+
+Example:
+Summarize article
+↓
+Score = 2
+Refactor CRM backend
+↓
+Score = 9
+
+
+4. Energy Prediction Model
+Predict:
+Cloud Energy
+Vs
+Local Energy
+
+Example:
+Local
+CPU:
+45 W
+GPU:
+95 W
+Runtime:
+25 sec
+
+↓
+
+Estimated Energy≈ 0.97 Wh
+
+Cloud:Internet transfer+Inference cost+Estimated cloud energy
+
+↓
+
+API Cost
+$0.09
+5. Decision Engine
+
+
+Tech Stack
+Backend
+C++ (runtime/agent)
+Python (decision engine)
+Kernel Interaction
+eBPF
+Linux /proc
+Intel RAPL
+NVIDIA Management Library (NVML)
+
+AI
+Ollama
+llama.cpp
+OpenAI-compatible APIs
+
+Dashboard
+React
+FastAPI
+PostgreSQL
+Grafana (optional)
